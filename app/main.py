@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.api.routes.job import router as jobs_router
+from app.api.routes.media import router as media_router
 from app.api.routes.metrics import router as metrics_router
 from app.core.logging import get_logger, setup_logging
 from app.core.redis import redis_client
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(jobs_router)
 app.include_router(metrics_router)
+app.include_router(media_router)
 
 @app.get("/")
 async def root():
