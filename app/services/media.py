@@ -79,11 +79,14 @@ async def complete_upload(file_id: UUID, db: AsyncSession):
             media.object_key
         )
     except Exception:
-        raise HTTPException(409, "File has not been uploaded to storage")
+        raise HTTPException(
+            status_code=409,
+            detail="File has not been uploaded to storage",
+        )
 
     actual_size = metadata["ContentLength"]
 
-    if MIN_UPLOAD_SIZE <= actual_size <= MAX_UPLOAD_SIZE:
+    if actual_size < MIN_UPLOAD_SIZE or actual_size > MAX_UPLOAD_SIZE:
         await run_in_threadpool(
             delete_object,
             media.object_key
@@ -92,7 +95,10 @@ async def complete_upload(file_id: UUID, db: AsyncSession):
         media.status = "rejected"
         await db.commit()
 
-        raise HTTPException(400, "File size is not within the allowed range")
+        raise HTTPException(
+            status_code=400,
+            detail="File size is not within the allowed range",
+        )
 
     try:
         header = await run_in_threadpool(
@@ -100,7 +106,10 @@ async def complete_upload(file_id: UUID, db: AsyncSession):
             media.object_key
         )
     except Exception:
-        raise HTTPException(503, "Could not inspect uploaded file")
+        raise HTTPException(
+            status_code=503,
+            detail="Could not inspect uploaded file",
+        )
     
     detected = detect_file_type(header)
 
@@ -114,8 +123,8 @@ async def complete_upload(file_id: UUID, db: AsyncSession):
         await db.commit()
 
         raise HTTPException(
-            415,
-            "Unsupported or invalid file format",
+            status_code=415,
+            detail="Unsupported or invalid file format",
         )
     
     media.content_type = detected.content_type
