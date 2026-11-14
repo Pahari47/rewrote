@@ -31,6 +31,7 @@ if config.config_file_name is not None:
 from app.database import Base
 from app.models import Job
 from app.models.media import Media
+from app.models.transform import TransFormMedia
 
 target_metadata = Base.metadata
 
