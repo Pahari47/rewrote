@@ -1,8 +1,11 @@
 import io
 import os
+from collections.abc import Callable
 from PIL import Image, ImageOps
 import warnings
 from app.core.storage import BUCKET, s3_client
+
+ProgressCallback = Callable[[str, int, str], None]
 
 MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", "40000000"))
 
@@ -22,13 +25,19 @@ def transform_image(
     width: int,
     height: int,
     output_format: str,
+    on_progress: ProgressCallback | None = None,
 ):
     output_format = output_format.lower()
 
     if output_format not in SUPPORTED_FORMATS:
         raise ValueError("Unsupported output format")
 
+    def report(status: str, progress: int, message: str) -> None:
+        if on_progress is not None:
+            on_progress(status, progress, message)
+
     # Download source
+    report("downloading", 10, "Downloading source image")
     response = s3_client.get_object(
         Bucket=BUCKET,
         Key=input_key,
@@ -38,8 +47,9 @@ def transform_image(
         image_bytes = response["Body"].read()
     finally:
         response["Body"].close()
-    
+
     # Process image
+    report("processing", 40, "Processing image")
     with warnings.catch_warnings():
         warnings.simplefilter(
             "error",
@@ -77,8 +87,9 @@ def transform_image(
 
             output.seek(0)
             output_bytes = output.getvalue()
-    
+
     # upload result
+    report("uploading", 80, "Uploading result")
     s3_client.put_object(
         Bucket=BUCKET,
         Key=output_key,

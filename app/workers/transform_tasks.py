@@ -11,6 +11,7 @@ from app.celery_app import celery_app
 from app.models.media import Media
 from app.models.transform import TransFormMedia
 from app.services.image_processor import transform_image
+from app.services.progress import publish_progress_sync
 
 
 engine = create_engine(
@@ -55,12 +56,14 @@ def process_transform(self: Task, job_id: str):
         ).scalar_one_or_none()
 
         if job is None:
+            publish_progress_sync(job_id, "failed", 0, "transform job not found")
             return {"status": "not_found"}
-        
+
         # duplicate delivery after successfull processing
         if job.status == "completed":
+            publish_progress_sync(job_id, "done", 100, "already completed")
             return {"status": "already_completed"}
-        
+
         media = db.execute(
             select(Media).where(Media.id == job.media_id)
         ).scalar_one()
@@ -76,6 +79,9 @@ def process_transform(self: Task, job_id: str):
                 width=job.width,
                 height=job.height,
                 output_format=job.output_format,
+                on_progress=lambda status, progress, message: publish_progress_sync(
+                    job_id, status, progress, message
+                ),
             )
 
             job.status = "completed"
@@ -84,12 +90,14 @@ def process_transform(self: Task, job_id: str):
 
             db.commit()
 
+            publish_progress_sync(job_id, "done", 100, "Transform complete")
+
             return {
                 "status": "completed",
                 "job_id": str(job.id),
                 **result
             }
-        
+
         except Exception as exc:
             db.rollback()
 
@@ -101,5 +109,7 @@ def process_transform(self: Task, job_id: str):
                     failed_job.status = "failed"
                     failed_job.error_message = str(exc)[:2000]
                     db.commit()
+
+                publish_progress_sync(job_id, "failed", 0, str(exc)[:2000])
 
             raise

@@ -5,8 +5,8 @@ from app.services.progress import subscribe_progress
 
 router = APIRouter()
 
-@router.websocket("ws/jobs/{job_id}")
-async def job_progress(websocket: WebSocket, job_id: int):
+@router.websocket("/ws/jobs/{job_id}")
+async def job_progress(websocket: WebSocket, job_id: str):
     await websocket.accept()
 
     try:
