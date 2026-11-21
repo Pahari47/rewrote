@@ -44,6 +44,7 @@ RETRYABLE_ERRORS = (
     max_retries=3,
     time_limit=300,
     soft_time_limit=270,
+    queue="image",
 )
 
 def process_transform(self: Task, job_id: str):

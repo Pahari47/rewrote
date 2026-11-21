@@ -10,17 +10,23 @@ celery_app = Celery(
     broker=os.getenv(
         "CELERY_BROKER_URL"
     ),
-    include=["app.workers.transform_tasks"]
+    include=["app.workers.transform_tasks", "app.workers.av_tasks"]
 )
 
 celery_app.conf.update(
     # Dedicated queue
-    task_default_queue="media_transform",
+    task_default_queue="image",
 
     task_queues=(
-        Queue("media_transform"),
+        Queue("image"),
+        Queue("video"),
     ),
 
+    task_routes={
+        "media.transform": {"queue": "image"},
+        "media.transcode": {"queue": "video"},
+    },
+    
     # Reliability
     task_acks_late=True,
     task_reject_on_worker_lost=True,
